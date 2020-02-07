@@ -1,8 +1,8 @@
 package command
 
 import (
-	"bytes"
 	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -17,8 +17,8 @@ func IsCommandAvailable(command string) bool {
 	return true
 }
 
-func Exec(id string, name string, arg ...string) error {
-	cmd := exec.Command(name, arg...)
+func Exec(cmdName string, args []string, id string, opts ...func(*exec.Cmd)) error {
+	cmd := exec.Command(cmdName, args...)
 
 	stdout := log.WithFields(log.Fields{
 		"id": id,
@@ -33,30 +33,15 @@ func Exec(id string, name string, arg ...string) error {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
+	for _, opt := range opts {
+		opt(cmd)
+	}
+
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrapf(err, "Exec failed to run %s %s", name, arg)
+		argsStr := strings.Join(args, " ")
+		return errors.Wrapf(err, "Exec failed to run %s %s", cmdName, argsStr)
 	}
 
 	return nil
-}
-
-func ExecResult(id string, name string, args ...string) (*bytes.Buffer, error) {
-	cmd := exec.Command(name, args...)
-
-	stdoutBuf := &bytes.Buffer{}
-	stderr := log.WithFields(log.Fields{
-		"id": id,
-	}).WriterLevel(log.DebugLevel)
-	defer stderr.Close()
-
-	cmd.Stdout = stdoutBuf
-	cmd.Stderr = stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return nil, errors.Wrapf(err, "Exec failed to run %s %s", name, args)
-	}
-
-	return stdoutBuf, nil
 }

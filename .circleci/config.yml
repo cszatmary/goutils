@@ -1,7 +1,7 @@
 version: 2.1
 
 jobs:
-  lint-build:
+  lint-test:
     docker:
       - image: circleci/golang:1.12
     working_directory: ~/goutils
@@ -23,13 +23,10 @@ jobs:
           name: Run linter
           command: make lint
       - run:
-          name: Build cannon
-          command: make build
-      - run:
           name: Run tests
           command: make test
 
 workflows:
-  lint-build:
+  lint-test:
     jobs:
-      - lint-build
+      - lint-test
