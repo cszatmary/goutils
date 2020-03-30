@@ -12,6 +12,8 @@ func ExitErr(err error, message string) {
 
 	if ShowStackTraces {
 		fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
 	os.Exit(1)
@@ -23,6 +25,8 @@ func ExitErrf(err error, format string, a ...interface{}) {
 
 	if ShowStackTraces {
 		fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 	}
 
 	os.Exit(1)
