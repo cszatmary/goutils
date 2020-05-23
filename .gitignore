@@ -24,3 +24,5 @@ goutils
 
 # Test coverage
 coverage/
+
+bin

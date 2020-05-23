@@ -8,7 +8,7 @@ import (
 var ShowStackTraces = true
 
 func ExitErr(err error, message string) {
-	fmt.Fprintf(os.Stderr, message+"\n")
+	fmt.Fprintln(os.Stderr, message)
 
 	if ShowStackTraces {
 		fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
@@ -21,7 +21,7 @@ func ExitErr(err error, message string) {
 
 func ExitErrf(err error, format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, a...)
-	fmt.Println()
+	fmt.Fprintln(os.Stderr)
 
 	if ShowStackTraces {
 		fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
@@ -33,12 +33,12 @@ func ExitErrf(err error, format string, a ...interface{}) {
 }
 
 func Exit(message string) {
-	fmt.Fprintf(os.Stderr, message+"\n")
+	fmt.Fprintln(os.Stderr, message)
 	os.Exit(1)
 }
 
 func Exitf(format string, a ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, a...)
-
+	fmt.Fprintln(os.Stderr)
 	os.Exit(1)
 }

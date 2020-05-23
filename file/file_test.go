@@ -1,24 +1,22 @@
 package file
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-const fixtures = "../_fixtures"
-const textTests = fixtures + "/text_tests"
-
 func TestDirExists(t *testing.T) {
-	path := textTests
+	path := "testdata/text_tests"
 	assert.True(t, FileOrDirExists(path))
 }
 
 func TestFileExists(t *testing.T) {
-	path := textTests + "/hype.md"
+	path := "testdata/text_tests/hype.md"
 	assert.True(t, FileOrDirExists(path))
 }
 
 func TestFileNotExists(t *testing.T) {
-	path := fixtures + "/notafile.txt"
+	path := "testdata/notafile.txt"
 	assert.False(t, FileOrDirExists(path))
 }
