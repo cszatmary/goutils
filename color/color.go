@@ -1,41 +1,75 @@
 package color
 
-const (
-	red     = "\x1b[31m"
-	green   = "\x1b[32m"
-	yellow  = "\x1b[33m"
-	blue    = "\x1b[34m"
-	magenta = "\x1b[35m"
-	cyan    = "\x1b[36m"
-	reset   = "\x1b[0m"
+import (
+	"fmt"
+	"os"
+	"regexp"
 )
+
+const (
+	ansiFgRed     = 31
+	ansiFgGreen   = 32
+	ansiFgYellow  = 33
+	ansiFgBlue    = 34
+	ansiFgMagenta = 35
+	ansiFgCyan    = 36
+	asnsiFgWhite  = 37
+	ansiResetFg   = 39
+)
+
+// Support for NO_COLOR env var
+// https://no-color.org/
+var noColor = false
+
+func init() {
+	// The standard says the value doesn't matter, only whether or not it's set
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		noColor = true
+	}
+}
+
+func apply(str string, start, end int) string {
+	if noColor {
+		return str
+	}
+
+	regex := regexp.MustCompile(fmt.Sprintf("\\x1b\\[%dm", end))
+	// Remove any occurrences of reset to make sure color isn't messed up
+	sanitized := regex.ReplaceAllString(str, "")
+	return fmt.Sprintf("\x1b[%dm%s\x1b[%dm", start, sanitized, end)
+}
 
 // Red creates a red colored string
 func Red(str string) string {
-	return red + str + reset
+	return apply(str, ansiFgRed, ansiResetFg)
 }
 
 // Green creates a green colored string
 func Green(str string) string {
-	return green + str + reset
+	return apply(str, ansiFgGreen, ansiResetFg)
 }
 
 // Yellow creates a yellow colored string
 func Yellow(str string) string {
-	return yellow + str + reset
+	return apply(str, ansiFgYellow, ansiResetFg)
 }
 
 // Blue creates a blue colored string
 func Blue(str string) string {
-	return blue + str + reset
+	return apply(str, ansiFgBlue, ansiResetFg)
 }
 
 // Magenta creates a magenta colored string
 func Magenta(str string) string {
-	return magenta + str + reset
+	return apply(str, ansiFgMagenta, ansiResetFg)
 }
 
 // Cyan creates a cyan colored string
 func Cyan(str string) string {
-	return cyan + str + reset
+	return apply(str, ansiFgCyan, ansiResetFg)
+}
+
+// White creates a white colored string
+func White(str string) string {
+	return apply(str, asnsiFgWhite, ansiResetFg)
 }
