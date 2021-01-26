@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 )
 
 type mockExit struct {
@@ -45,8 +44,13 @@ func TestExit(t *testing.T) {
 
 	Exit("Something broke")
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "Something broke\n", buf.String())
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "Something broke\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
 }
 
 func TestExitOnExit(t *testing.T) {
@@ -65,9 +69,16 @@ func TestExitOnExit(t *testing.T) {
 
 	Exit("Something broke")
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "Something broke\n", buf.String())
-	assert.True(t, c.flushed)
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "Something broke\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
+	if !c.flushed {
+		t.Error("want flushed to be true, was false")
+	}
 }
 
 func TestExitf(t *testing.T) {
@@ -81,8 +92,13 @@ func TestExitf(t *testing.T) {
 
 	Exitf("%d failures", 3)
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "3 failures\n", buf.String())
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "3 failures\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
 }
 
 func TestExitfOnExit(t *testing.T) {
@@ -101,9 +117,16 @@ func TestExitfOnExit(t *testing.T) {
 
 	Exitf("%d failures", 3)
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "3 failures\n", buf.String())
-	assert.True(t, c.flushed)
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "3 failures\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
+	if !c.flushed {
+		t.Error("want flushed to be true, was false")
+	}
 }
 
 func TestExitErr(t *testing.T) {
@@ -119,8 +142,13 @@ func TestExitErr(t *testing.T) {
 
 	ExitErr(err, "Something broke")
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "Something broke\nError: err everything broke\n", buf.String())
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "Something broke\nError: err everything broke\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
 }
 
 func TestExitErrStack(t *testing.T) {
@@ -138,13 +166,14 @@ func TestExitErrStack(t *testing.T) {
 
 	ExitErr(err, "Something broke")
 
-	assert.Equal(t, 1, me.code)
-
-	expected := "Something broke\n" +
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "Something broke\n" +
 		"Error: err everything broke\n" +
 		"github.com/TouchBistro/goutils/fatal.TestExitErrStack\n" +
 		"\t.+"
-	testFormatRegexp(t, 0, err, buf.String(), expected)
+	testFormatRegexp(t, 0, err, buf.String(), want)
 }
 
 func TestExitErrf(t *testing.T) {
@@ -160,8 +189,13 @@ func TestExitErrf(t *testing.T) {
 
 	ExitErrf(err, "%d failures", 3)
 
-	assert.Equal(t, 1, me.code)
-	assert.Equal(t, "3 failures\nError: err everything broke\n", buf.String())
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "3 failures\nError: err everything broke\n"
+	if buf.String() != want {
+		t.Errorf("got output %q, want %q", buf.String(), want)
+	}
 }
 
 func TestExitErrStackf(t *testing.T) {
@@ -179,13 +213,14 @@ func TestExitErrStackf(t *testing.T) {
 
 	ExitErrf(err, "%d failures", 3)
 
-	assert.Equal(t, 1, me.code)
-
-	expected := "3 failures\n" +
+	if me.code != 1 {
+		t.Errorf("got error code %d, expected 1", me.code)
+	}
+	want := "3 failures\n" +
 		"Error: err everything broke\n" +
 		"github.com/TouchBistro/goutils/fatal.TestExitErrStack\n" +
 		"\t.+"
-	testFormatRegexp(t, 0, err, buf.String(), expected)
+	testFormatRegexp(t, 0, err, buf.String(), want)
 }
 
 // Taken from https://github.com/pkg/errors/blob/614d223910a179a466c1767a985424175c39b465/format_test.go#L387

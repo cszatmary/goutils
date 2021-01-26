@@ -1,3 +1,4 @@
+// Package color provides functions for creating coloured strings.
 package color
 
 import (
@@ -19,17 +20,21 @@ const (
 
 // Support for NO_COLOR env var
 // https://no-color.org/
-var noColor = false
+var (
+	noColor = false
+	enabled bool
+)
 
 func init() {
 	// The standard says the value doesn't matter, only whether or not it's set
 	if _, ok := os.LookupEnv("NO_COLOR"); ok {
 		noColor = true
 	}
+	enabled = !noColor
 }
 
 func apply(str string, start, end int) string {
-	if noColor {
+	if !enabled {
 		return str
 	}
 
@@ -37,6 +42,17 @@ func apply(str string, start, end int) string {
 	// Remove any occurrences of reset to make sure color isn't messed up
 	sanitized := regex.ReplaceAllString(str, "")
 	return fmt.Sprintf("\x1b[%dm%s\x1b[%dm", start, sanitized, end)
+}
+
+// SetEnabled sets whether color is enabled or disabled.
+// If the NO_COLOR environment variable is set, this function will
+// do nothing as NO_COLOR takes precedence.
+func SetEnabled(e bool) {
+	// NO_COLOR overrides this
+	if noColor {
+		return
+	}
+	enabled = e
 }
 
 // Red creates a red colored string

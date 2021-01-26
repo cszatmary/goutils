@@ -1,59 +1,58 @@
-package color
+package color_test
 
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/TouchBistro/goutils/color"
 )
 
 func TestColors(t *testing.T) {
-	noColor = false
-
+	color.SetEnabled(true)
 	tests := []struct {
-		name     string
-		colorFn  func(string) string
-		input    string
-		expected string
+		name    string
+		colorFn func(string) string
+		input   string
+		want    string
 	}{
 		{
 			"Red() test",
-			Red,
+			color.Red,
 			"foo bar",
 			"\x1b[31mfoo bar\x1b[39m",
 		},
 		{
 			"Green() test",
-			Green,
+			color.Green,
 			"foo bar",
 			"\x1b[32mfoo bar\x1b[39m",
 		},
 		{
 			"Yellow() test",
-			Yellow,
+			color.Yellow,
 			"foo bar",
 			"\x1b[33mfoo bar\x1b[39m",
 		},
 		{
 			"Blue() test",
-			Blue,
+			color.Blue,
 			"foo bar",
 			"\x1b[34mfoo bar\x1b[39m",
 		},
 		{
 			"Magenta() test",
-			Magenta,
+			color.Magenta,
 			"foo bar",
 			"\x1b[35mfoo bar\x1b[39m",
 		},
 		{
 			"Cyan() test",
-			Cyan,
+			color.Cyan,
 			"foo bar",
 			"\x1b[36mfoo bar\x1b[39m",
 		},
 		{
 			"White() test",
-			White,
+			color.White,
 			"foo bar",
 			"\x1b[37mfoo bar\x1b[39m",
 		},
@@ -61,22 +60,28 @@ func TestColors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			received := tt.colorFn(tt.input)
-			assert.Equal(t, tt.expected, received)
+			got := tt.colorFn(tt.input)
+			if got != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
 		})
 	}
 }
 
 func TestStripReset(t *testing.T) {
-	noColor = false
-
-	received := Red("foo \x1b[39mbar")
-	assert.Equal(t, "\x1b[31mfoo bar\x1b[39m", received)
+	color.SetEnabled(true)
+	got := color.Red("foo \x1b[39mbar")
+	want := "\x1b[31mfoo bar\x1b[39m"
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
 }
 
-func TestNoColor(t *testing.T) {
-	noColor = true
-
-	received := Red("foo bar")
-	assert.Equal(t, "foo bar", received)
+func TestColorDisabled(t *testing.T) {
+	color.SetEnabled(false)
+	got := color.Red("foo bar")
+	want := "foo bar"
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
 }

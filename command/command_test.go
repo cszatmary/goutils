@@ -1,44 +1,77 @@
-package command
+package command_test
 
 import (
 	"bytes"
-	"os/exec"
+	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/TouchBistro/goutils/command"
 )
 
-func TestIsCommandAvailable(t *testing.T) {
-	exists := IsCommandAvailable("echo")
-
-	assert.True(t, exists)
+func TestIsAvailable(t *testing.T) {
+	exists := command.IsAvailable("echo")
+	if !exists {
+		t.Error("want command to exist but it does not")
+	}
 }
 
-func TestNotIsCommandAvailable(t *testing.T) {
-	exists := IsCommandAvailable("asljhasld")
-
-	assert.False(t, exists)
+func TestNotIsAvailable(t *testing.T) {
+	exists := command.IsAvailable("asljhasld")
+	if exists {
+		t.Error("want command to not exist but it does")
+	}
 }
 
 func TestExec(t *testing.T) {
-	err := Exec("echo", []string{"Hello world"}, "test-exec")
-
-	assert.NoError(t, err)
+	err := command.Exec("echo", "Hello world")
+	if err != nil {
+		t.Errorf("want nil error, got %v", err)
+	}
 }
 
 func TestExecOpts(t *testing.T) {
-	assert := assert.New(t)
-	buf := &bytes.Buffer{}
-	err := Exec("echo", []string{"Hello world"}, "test-exec-opts", func(cmd *exec.Cmd) {
-		cmd.Stdout = buf
-	})
+	stdoutBuf := &bytes.Buffer{}
+	stderrBuf := &bytes.Buffer{}
+	cmd := command.New(
+		command.WithStdout(stdoutBuf),
+		command.WithStderr(stderrBuf),
+		command.WithEnv(map[string]string{
+			"FOO": "BAR",
+		}),
+	)
+	err := cmd.Exec("sh", "-c", "echo $FOO")
+	if err != nil {
+		t.Errorf("want nil error, got %v", err)
+	}
+	wantStdout := "BAR\n"
+	if stdoutBuf.String() != wantStdout {
+		t.Errorf("got stdout %s, want %s", stdoutBuf.String(), wantStdout)
+	}
+	if stderrBuf.String() != "" {
+		t.Errorf("got stderr %s, want it to be empty", stderrBuf.String())
+	}
+}
 
-	assert.NoError(err)
-	assert.Equal("Hello world\n", buf.String())
+func TestExecWithDir(t *testing.T) {
+	tmpdir := t.TempDir()
+	buf := &bytes.Buffer{}
+	cmd := command.New(
+		command.WithStdout(buf),
+		command.WithDir(tmpdir),
+	)
+	err := cmd.Exec("pwd")
+	if err != nil {
+		t.Errorf("want nil error, got %v", err)
+	}
+	got := strings.TrimSpace(buf.String())
+	if !strings.Contains(got, tmpdir) {
+		t.Errorf("got stdout %s, want %s", got, tmpdir)
+	}
 }
 
 func TestExecError(t *testing.T) {
-	err := Exec("notacmd", []string{"Hello World"}, "test-exec-error")
-
-	assert.Error(t, err)
+	err := command.Exec("notacmd", "Hello World")
+	if err == nil {
+		t.Error("want non-nil error, got nil")
+	}
 }

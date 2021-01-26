@@ -1,3 +1,6 @@
+// Package fatal provides functionality for terminating the program when a
+// fatal condition occurs. It allows for printing messages and errors and
+// running a clean up function before the program is terminated.
 package fatal
 
 import (
