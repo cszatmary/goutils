@@ -15,43 +15,49 @@ func TestColors(t *testing.T) {
 		want    string
 	}{
 		{
-			"Red() test",
+			"Black",
+			color.Black,
+			"foo bar",
+			"\x1b[30mfoo bar\x1b[39m",
+		},
+		{
+			"Red",
 			color.Red,
 			"foo bar",
 			"\x1b[31mfoo bar\x1b[39m",
 		},
 		{
-			"Green() test",
+			"Green",
 			color.Green,
 			"foo bar",
 			"\x1b[32mfoo bar\x1b[39m",
 		},
 		{
-			"Yellow() test",
+			"Yellow",
 			color.Yellow,
 			"foo bar",
 			"\x1b[33mfoo bar\x1b[39m",
 		},
 		{
-			"Blue() test",
+			"Blue",
 			color.Blue,
 			"foo bar",
 			"\x1b[34mfoo bar\x1b[39m",
 		},
 		{
-			"Magenta() test",
+			"Magenta",
 			color.Magenta,
 			"foo bar",
 			"\x1b[35mfoo bar\x1b[39m",
 		},
 		{
-			"Cyan() test",
+			"Cyan",
 			color.Cyan,
 			"foo bar",
 			"\x1b[36mfoo bar\x1b[39m",
 		},
 		{
-			"White() test",
+			"White",
 			color.White,
 			"foo bar",
 			"\x1b[37mfoo bar\x1b[39m",
@@ -62,7 +68,7 @@ func TestColors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.colorFn(tt.input)
 			if got != tt.want {
-				t.Errorf("got %s, want %s", got, tt.want)
+				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -70,10 +76,19 @@ func TestColors(t *testing.T) {
 
 func TestStripReset(t *testing.T) {
 	color.SetEnabled(true)
-	got := color.Red("foo \x1b[39mbar")
-	want := "\x1b[31mfoo bar\x1b[39m"
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"single reset", "foo \x1b[39mbar", "\x1b[31mfoo bar\x1b[39m"},
+		{"multiple resets", "foo \x1b[39m\x1b[39mbar", "\x1b[31mfoo bar\x1b[39m"},
+	}
+	for _, tt := range tests {
+		got := color.Red(tt.in)
+		if got != tt.want {
+			t.Errorf("got %q, want %q", got, tt.want)
+		}
 	}
 }
 
@@ -82,6 +97,20 @@ func TestColorDisabled(t *testing.T) {
 	got := color.Red("foo bar")
 	want := "foo bar"
 	if got != want {
-		t.Errorf("got %s, want %s", got, want)
+		t.Errorf("got %q, want %q", got, want)
 	}
+}
+
+func BenchmarkRed(b *testing.B) {
+	color.SetEnabled(true)
+	b.Run("no strip", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			color.Red("foo bar")
+		}
+	})
+	b.Run("strip", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			color.Red("foo \x1b[39m\x1b[39mbar")
+		}
+	})
 }
