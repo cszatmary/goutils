@@ -11,8 +11,8 @@ import (
 
 // Package state
 var (
-	shouldShowStackTraces = false
-	onExitHandler         func()
+	printDetailedError = false
+	onExitHandler      func()
 )
 
 // Used for dependency injection in tests
@@ -23,10 +23,12 @@ var (
 	exitFunc  func(code int) = os.Exit
 )
 
-// ShowStackTraces sets whether or not stack traces should be printed
-// when ExitErr and ExitErrf are called.
-func ShowStackTraces(show bool) {
-	shouldShowStackTraces = show
+// PrintDetailedError sets whether or not a detailed version of an error
+// should be printed when calling ExitErr or ExitErrf.
+//
+// A detailed error is printed by using the '%+v' format verb.
+func PrintDetailedError(show bool) {
+	printDetailedError = show
 }
 
 // OnExit registers a handler that will run before os.Exit is called.
@@ -39,41 +41,23 @@ func OnExit(handler func()) {
 // ExitErr prints the given message and error to stderr then exits the program.
 func ExitErr(err error, message string) {
 	fmt.Fprintln(errWriter, message)
-
 	if err != nil {
-		if shouldShowStackTraces {
+		if printDetailedError {
 			fmt.Fprintf(errWriter, "Error: %+v\n", err)
 		} else {
 			fmt.Fprintf(errWriter, "Error: %s\n", err)
 		}
 	}
-
 	if onExitHandler != nil {
 		onExitHandler()
 	}
-
 	exitFunc(1)
 }
 
 // ExitErrf prints the given message and error to stderr then exits the program.
 // Supports printf like formatting.
 func ExitErrf(err error, format string, a ...interface{}) {
-	fmt.Fprintf(errWriter, format, a...)
-	fmt.Fprintln(errWriter)
-
-	if err != nil {
-		if shouldShowStackTraces {
-			fmt.Fprintf(errWriter, "Error: %+v\n", err)
-		} else {
-			fmt.Fprintf(errWriter, "Error: %s\n", err)
-		}
-	}
-
-	if onExitHandler != nil {
-		onExitHandler()
-	}
-
-	exitFunc(1)
+	ExitErr(err, fmt.Sprintf(format, a...))
 }
 
 // Exit prints the given message to stderr then exists the program.
@@ -84,5 +68,5 @@ func Exit(message string) {
 // Exitf prints the given message to stderr then exits the program.
 // Supports printf like formatting.
 func Exitf(format string, a ...interface{}) {
-	ExitErrf(nil, format, a...)
+	ExitErr(nil, fmt.Sprintf(format, a...))
 }

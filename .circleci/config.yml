@@ -1,25 +1,14 @@
 version: 2.1
 
-cache_key: &cache_key goutil-deps-20210108-{{ checksum "go.sum" }}
-
 jobs:
   lint-test:
     docker:
-      - image: cimg/go:1.15
+      - image: cimg/go:1.17
     steps:
       - checkout
-      - restore_cache:
-          name: Restore dependency cache
-          keys:
-            - *cache_key
       - run:
           name: Install dependencies
           command: make setup
-      - save_cache:
-          name: Cache dependencies
-          key: *cache_key
-          paths:
-            - ~/go/pkg
       - run:
           name: Run linter
           command: make lint
