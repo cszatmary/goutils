@@ -2,7 +2,6 @@ package file_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,14 +47,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	// Make sure file was actually written
-	data, err := ioutil.ReadFile(downloadPath)
-	if err != nil {
-		t.Fatalf("failed to read file %v", err)
-	}
-	gotContent := string(data)
-	if gotContent != content {
-		t.Errorf("got %q, want %q", gotContent, content)
-	}
+	assertFile(t, downloadPath, content)
 }
 
 func TestCopyFile(t *testing.T) {
@@ -63,7 +55,7 @@ func TestCopyFile(t *testing.T) {
 	src := filepath.Join(tmpdir, "src")
 	dst := filepath.Join(tmpdir, "dst")
 	const content = `this is some file content`
-	err := ioutil.WriteFile(src, []byte(content), 0o644)
+	err := os.WriteFile(src, []byte(content), 0o644)
 	if err != nil {
 		t.Fatalf("failed to write file %v", err)
 	}
@@ -72,14 +64,7 @@ func TestCopyFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
-	data, err := ioutil.ReadFile(dst)
-	if err != nil {
-		t.Fatalf("failed to read file %v", err)
-	}
-	gotContent := string(data)
-	if gotContent != content {
-		t.Errorf("got %q, want %q", gotContent, content)
-	}
+	assertFile(t, dst, content)
 }
 
 func TestCopyFileNotRegularFile(t *testing.T) {
@@ -106,12 +91,12 @@ func TestCopyDirContents(t *testing.T) {
 		t.Fatalf("failed to create dir: %s", err)
 	}
 	const barfileContent = "bar"
-	err = ioutil.WriteFile(filepath.Join(src, "barfile"), []byte(barfileContent), 0o644)
+	err = os.WriteFile(filepath.Join(src, "barfile"), []byte(barfileContent), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
 	const bazfileContent = "baz"
-	err = ioutil.WriteFile(filepath.Join(src, "foodir", "bazfile"), []byte(bazfileContent), 0o644)
+	err = os.WriteFile(filepath.Join(src, "foodir", "bazfile"), []byte(bazfileContent), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
@@ -120,24 +105,8 @@ func TestCopyDirContents(t *testing.T) {
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
-
-	data, err := ioutil.ReadFile(filepath.Join(dst, "barfile"))
-	if err != nil {
-		t.Fatalf("failed to read file %v", err)
-	}
-	gotContent := string(data)
-	if gotContent != barfileContent {
-		t.Errorf("got %q, want %q", gotContent, barfileContent)
-	}
-
-	data, err = ioutil.ReadFile(filepath.Join(dst, "foodir", "bazfile"))
-	if err != nil {
-		t.Fatalf("failed to read file %v", err)
-	}
-	gotContent = string(data)
-	if gotContent != bazfileContent {
-		t.Errorf("got %q, want %q", gotContent, bazfileContent)
-	}
+	assertFile(t, filepath.Join(dst, "barfile"), barfileContent)
+	assertFile(t, filepath.Join(dst, "foodir", "bazfile"), bazfileContent)
 }
 
 func TestCopyDirContentsNotDir(t *testing.T) {
@@ -145,7 +114,7 @@ func TestCopyDirContentsNotDir(t *testing.T) {
 	src := filepath.Join(tmpdir, "src")
 	dst := filepath.Join(tmpdir, "dst")
 	const content = `this is some file content`
-	err := ioutil.WriteFile(src, []byte(content), 0o644)
+	err := os.WriteFile(src, []byte(content), 0o644)
 	if err != nil {
 		t.Fatalf("failed to write file %v", err)
 	}
@@ -163,12 +132,12 @@ func TestDirSize(t *testing.T) {
 		t.Fatalf("failed to create dir: %s", err)
 	}
 	const barfileContent = "bar"
-	err = ioutil.WriteFile(filepath.Join(tmpdir, "barfile"), []byte(barfileContent), 0o644)
+	err = os.WriteFile(filepath.Join(tmpdir, "barfile"), []byte(barfileContent), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
 	const bazfileContent = "baz"
-	err = ioutil.WriteFile(filepath.Join(tmpdir, "foodir", "bazfile"), []byte(bazfileContent), 0o644)
+	err = os.WriteFile(filepath.Join(tmpdir, "foodir", "bazfile"), []byte(bazfileContent), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
@@ -189,7 +158,7 @@ func TestDirSizeNotDir(t *testing.T) {
 	tmpdir := t.TempDir()
 	const barfileContent = "bar"
 	barfilePath := filepath.Join(tmpdir, "barfile")
-	err := ioutil.WriteFile(barfilePath, []byte(barfileContent), 0o644)
+	err := os.WriteFile(barfilePath, []byte(barfileContent), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
@@ -209,11 +178,11 @@ func TestDirLen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create dir: %s", err)
 	}
-	err = ioutil.WriteFile(filepath.Join(tmpdir, "barfile"), []byte("bar"), 0o644)
+	err = os.WriteFile(filepath.Join(tmpdir, "barfile"), []byte("bar"), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
-	err = ioutil.WriteFile(filepath.Join(tmpdir, "bazfile"), []byte("baz"), 0o644)
+	err = os.WriteFile(filepath.Join(tmpdir, "bazfile"), []byte("baz"), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create file: %s", err)
 	}
@@ -225,5 +194,79 @@ func TestDirLen(t *testing.T) {
 	want := 3
 	if n != want {
 		t.Errorf("got dir len %d, want %d", n, want)
+	}
+}
+
+func TestUntar(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"normal tar file", "testdata/basic.tar"},
+		{"gzip-compressed tar file", "testdata/basic.tgz"},
+		{"tar file without directories", "testdata/basic_nodirs.tgz"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.path)
+			if err != nil {
+				t.Fatalf("failed to open %s: %v", tt.path, err)
+			}
+			t.Cleanup(func() {
+				f.Close()
+			})
+
+			tmpdir := t.TempDir()
+			err = file.Untar(tmpdir, f)
+			if err != nil {
+				t.Fatalf("want nil error, got %v", err)
+			}
+
+			assertFile(t, filepath.Join(tmpdir, "a.txt"), "This is a file\n")
+			// This means the b dir exists by definition
+			assertFile(t, filepath.Join(tmpdir, "b/c.txt"), "This is another file inside a directory\n")
+		})
+	}
+}
+
+func TestUntarSymlink(t *testing.T) {
+	const path = "testdata/basic_symlink.tgz"
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("failed to open %s: %v", path, err)
+	}
+	t.Cleanup(func() {
+		f.Close()
+	})
+
+	tmpdir := t.TempDir()
+	err = file.Untar(tmpdir, f)
+	if err != nil {
+		t.Fatalf("want nil error, got %v", err)
+	}
+
+	assertFile(t, filepath.Join(tmpdir, "a.txt"), "This is a file\n")
+	// Check that symlink was created with the right path
+	cPath := filepath.Join(tmpdir, "b/c.txt")
+	link, err := os.Readlink(cPath)
+	if err != nil {
+		t.Fatalf("failed to read link %s: %v", cPath, err)
+	}
+	const wantLink = "../a.txt"
+	if link != wantLink {
+		t.Errorf("got symlink %q, want %q", link, wantLink)
+	}
+	assertFile(t, cPath, "This is a file\n")
+}
+
+func assertFile(t *testing.T, path, want string) {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read file %s: %v", path, err)
+	}
+	got := string(b)
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
