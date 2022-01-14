@@ -8,17 +8,30 @@ import (
 	"github.com/TouchBistro/goutils/command"
 )
 
-func TestIsAvailable(t *testing.T) {
-	exists := command.IsAvailable("echo")
-	if !exists {
-		t.Error("want command to exist but it does not")
+func TestExists(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		want    bool
+	}{
+		{
+			name:    "command exists",
+			command: "echo",
+			want:    true,
+		},
+		{
+			name:    "command does not exists",
+			command: "thiscannotpossiblyexist1234",
+			want:    false,
+		},
 	}
-}
-
-func TestNotIsAvailable(t *testing.T) {
-	exists := command.IsAvailable("asljhasld")
-	if exists {
-		t.Error("want command to not exist but it does")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := command.Exists(tt.command)
+			if got != tt.want {
+				t.Errorf("got %t for exists, want %t", got, tt.want)
+			}
+		})
 	}
 }
 

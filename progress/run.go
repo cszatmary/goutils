@@ -70,7 +70,7 @@ type RunParallelOptions struct {
 	Count int
 	// Concurrency controls how many goroutines can run concurrently.
 	// Defaults to runtime.NumCPU if omitted.
-	Concurrency uint
+	Concurrency int
 	// CancelOnError determines how Run should behave if a function returns an error.
 	// If true, Run will immediately return an error and cancel all other running functions.
 	// If false, Run will let the other functions continue and will return an errors.List
@@ -104,7 +104,7 @@ func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFun
 		// Always provide a timeout to make sure the program doesn't hang and run forever.
 		opts.Timeout = defaultTimeout
 	}
-	if opts.Concurrency == 0 {
+	if opts.Concurrency < 1 {
 		opts.Concurrency = DefaultConcurrency()
 	}
 
@@ -156,11 +156,11 @@ func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFun
 
 // DefaultConcurrency returns default concurrency that should be used for parallel operations
 // by using runtime.NumCPU.
-func DefaultConcurrency() uint {
+func DefaultConcurrency() int {
 	// Check for negative number just to be safe since the type is int.
 	// Better safe than sorry and having an overflow.
 	if numCPUs := runtime.NumCPU(); numCPUs > 0 {
-		return uint(numCPUs)
+		return numCPUs
 	}
 	// If we get here somehow just execute everything serially.
 	return 1

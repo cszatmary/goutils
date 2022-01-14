@@ -10,9 +10,8 @@ import (
 	"strings"
 )
 
-// IsAvailable checks if command is available on the system. This is done by
-// checking if command exists within the user's PATH.
-func IsAvailable(command string) bool {
+// Exists checks if the command exists on the system by seeing if it's in the user's PATH.
+func Exists(command string) bool {
 	_, err := exec.LookPath(command)
 	return err == nil
 }

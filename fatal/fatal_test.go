@@ -1,11 +1,116 @@
-package fatal
+package fatal_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/TouchBistro/goutils/errors"
+	"github.com/TouchBistro/goutils/fatal"
 )
+
+func TestExiterExit(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode int
+	}{
+		{
+			name:     "not a ExitCoder",
+			err:      fmt.Errorf("oops error"),
+			wantCode: 1,
+		},
+		{
+			name:     "ExitCoder",
+			err:      coder(2),
+			wantCode: 2,
+		},
+		{
+			name: "fatal.Error",
+			err: &fatal.Error{
+				Code: 130,
+				Msg:  "Operation cancelled",
+			},
+			wantCode: 130,
+		},
+		{
+			name:     "handle zero",
+			err:      coder(0),
+			wantCode: 1,
+		},
+		{
+			name:     "handle negative",
+			err:      coder(-1),
+			wantCode: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var me mockExit
+			exiter := fatal.Exiter{ExitFunc: me.Exit}
+			exiter.Exit(tt.err)
+			if me.code != tt.wantCode {
+				t.Errorf("got exit code %d, want %d", me.code, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestExiterPrintAndExit(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		printDetailed bool
+		wantCode      int
+		wantOutput    string
+	}{
+		{
+			name:       "any error",
+			err:        fmt.Errorf("oops error"),
+			wantCode:   1,
+			wantOutput: "oops error\n",
+		},
+		{
+			name: "fatal.Error",
+			err: &fatal.Error{
+				Code: 2,
+				Msg:  "Something broke",
+				Err:  errors.New(nil, "err everything broke", errors.Op("test.Foo")),
+			},
+			wantCode:   2,
+			wantOutput: "Error: err everything broke\n\nSomething broke\n",
+		},
+		{
+			name: "fatal.Error with detail",
+			err: &fatal.Error{
+				Code: 2,
+				Msg:  "Something broke",
+				Err:  errors.New(nil, "err everything broke", errors.Op("test.Foo")),
+			},
+			printDetailed: true,
+			wantCode:      2,
+			wantOutput:    "Error: test.Foo: err everything broke\n\nSomething broke\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var me mockExit
+			var buf bytes.Buffer
+			exiter := fatal.Exiter{
+				Out:           &buf,
+				PrintDetailed: tt.printDetailed,
+				ExitFunc:      me.Exit,
+			}
+			exiter.PrintAndExit(tt.err)
+			if me.code != tt.wantCode {
+				t.Errorf("got exit code %d, want %d", me.code, tt.wantCode)
+			}
+			if buf.String() != tt.wantOutput {
+				t.Errorf("got output:\n%s\nwant:\n%s", buf.String(), tt.wantOutput)
+			}
+		})
+	}
+}
 
 type mockExit struct {
 	code int
@@ -15,205 +120,12 @@ func (me *mockExit) Exit(code int) {
 	me.code = code
 }
 
-type client struct {
-	flushed bool
+type coder int
+
+func (c coder) ExitCode() int {
+	return int(c)
 }
 
-func (c *client) Flush() {
-	c.flushed = true
-}
-
-func resetState() {
-	// Before each: need to make sure global state is
-	// reset so it doesn't poison tests
-	PrintDetailedError(false)
-	OnExit(nil)
-}
-
-func TestExit(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	Exit("Something broke")
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "Something broke\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-}
-
-func TestExitOnExit(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-	c := client{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	OnExit(func() {
-		c.Flush()
-	})
-
-	Exit("Something broke")
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "Something broke\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-	if !c.flushed {
-		t.Error("want flushed to be true, was false")
-	}
-}
-
-func TestExitf(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	Exitf("%d failures", 3)
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "3 failures\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-}
-
-func TestExitfOnExit(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-	c := client{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	OnExit(func() {
-		c.Flush()
-	})
-
-	Exitf("%d failures", 3)
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "3 failures\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-	if !c.flushed {
-		t.Error("want flushed to be true, was false")
-	}
-}
-
-func TestExitErr(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	err := errors.New(nil, "err everything broke", errors.Op("test.Foo"))
-
-	ExitErr(err, "Something broke")
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "Something broke\nError: err everything broke\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-}
-
-func TestExitErrStack(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	err := errors.New(nil, "err everything broke", errors.Op("test.Foo"))
-
-	PrintDetailedError(true)
-
-	ExitErr(err, "Something broke")
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "Something broke\nError: test.Foo: err everything broke\n"
-	if buf.String() != want {
-		t.Errorf("got output\n%q\nwant\n%q", buf.String(), want)
-	}
-}
-
-func TestExitErrf(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	err := errors.New(nil, "err everything broke", errors.Op("test.Foo"))
-
-	ExitErrf(err, "%d failures", 3)
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "3 failures\nError: err everything broke\n"
-	if buf.String() != want {
-		t.Errorf("got output %q, want %q", buf.String(), want)
-	}
-}
-
-func TestExitErrStackf(t *testing.T) {
-	resetState()
-
-	buf := &bytes.Buffer{}
-	me := mockExit{}
-
-	errWriter = buf
-	exitFunc = me.Exit
-
-	err := errors.New(nil, "err everything broke", errors.Op("test.Foo"))
-
-	PrintDetailedError(true)
-
-	ExitErrf(err, "%d failures", 3)
-
-	if me.code != 1 {
-		t.Errorf("got error code %d, expected 1", me.code)
-	}
-	want := "3 failures\nError: test.Foo: err everything broke\n"
-	if buf.String() != want {
-		t.Errorf("got output\n%q\nwant\n%q", buf.String(), want)
-	}
+func (c coder) Error() string {
+	return fmt.Sprintf("Code: %d", c)
 }
