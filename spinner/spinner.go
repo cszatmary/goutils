@@ -37,7 +37,7 @@ var frames = [...]string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧",
 type Spinner struct {
 	interval time.Duration
 	w        io.Writer
-	mu       *sync.Mutex
+	mu       sync.Mutex
 	// stopChan is used to stop the spinner
 	stopChan chan struct{}
 	active   bool
@@ -54,7 +54,7 @@ type Spinner struct {
 	maxMsgLen int
 	// buffer to keep track of message to write to w
 	// these will be written on each call of erase
-	msgBuf      *bytes.Buffer
+	msgBuf      bytes.Buffer
 	persistMsgs bool
 }
 
@@ -63,13 +63,11 @@ func New(opts ...Option) *Spinner {
 	s := &Spinner{
 		interval: 100 * time.Millisecond,
 		w:        os.Stderr,
-		mu:       &sync.Mutex{},
 		stopChan: make(chan struct{}, 1),
 		active:   false,
 		// default to 1 since we don't show progress on 1 anyway
 		count:     1,
 		maxMsgLen: 80,
-		msgBuf:    &bytes.Buffer{},
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -137,8 +135,8 @@ func WithPersistMessages(b bool) Option {
 	}
 }
 
-// Start will start the spinner.
-// If the spinner is already running, Start will do nothing.
+// Start starts the spinner.
+// If the spinner is already running, Start does nothing.
 func (s *Spinner) Start() {
 	s.mu.Lock()
 	if s.active {
@@ -152,7 +150,7 @@ func (s *Spinner) Start() {
 }
 
 // Stop stops the spinner if it is currently running.
-// If the spinner is not running, Stop will do nothing.
+// If the spinner is not running, Stop does nothing.
 func (s *Spinner) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

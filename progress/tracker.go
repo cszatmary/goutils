@@ -5,7 +5,8 @@
 // the Logger and Spinner interfaces. A Tracker allows for display progress and logging
 // messages while one or more operations are being performed. Some convenience Tracker types
 // are provided to make it easier to create Trackers. This package does not provide a
-// Logger implementation, instead it allows you it bring your own logger.
+// Logger or Spinner implementation directly. Instead types implementing these interfaces
+// can be provided by other packages and composed as necessary.
 //
 // This package also provides the Run and RunParallel functions with allow running a single
 // operation or multiple operations respectively while displaying progress and handling
@@ -17,9 +18,6 @@ import (
 	"context"
 	"io"
 	"runtime"
-	"time"
-
-	"github.com/TouchBistro/goutils/spinner"
 )
 
 // Fields is a collection of fields provided to Logger.WithFields.
@@ -44,6 +42,14 @@ type Logger interface {
 	Info(args ...interface{})
 	Warn(args ...interface{})
 	Error(args ...interface{})
+}
+
+// OutputLogger is a Logger that allows accessing and updating the underlying
+// io.Writer that logs are written to.
+type OutputLogger interface {
+	Logger
+	Output() io.Writer
+	SetOutput(w io.Writer)
 }
 
 // Spinner represents a type that can display the progress of an operation
@@ -128,84 +134,6 @@ func (*PlainTracker) Inc()  {}
 
 func (t *PlainTracker) UpdateMessage(m string) {
 	t.Logger.Info(m)
-}
-
-// OutputLogger is a Logger that allows accessing and updating the underlying
-// io.Writer that logs are written to.
-type OutputLogger interface {
-	Logger
-	Output() io.Writer
-	SetOutput(w io.Writer)
-}
-
-// SpinnerTracker is a tracker that uses a spinner.Spinner to display progress.
-type SpinnerTracker struct {
-	OutputLogger
-
-	// Options to use when creating a spinner.
-
-	// Interval is how often the spinner updates. See spinner.WithInterval.
-	Interval time.Duration
-	// MaxMessageLength is the max length a message can be. See spinner.WithMaxMessageLength.
-	MaxMessageLength int
-	// PersistMessages controls whether or not messages are persisted by the spinner.
-	// See spinner.WithPersistMessages.
-	PersistMessages bool
-
-	s   *spinner.Spinner // the running spinner, nil if no spinner is running
-	out io.Writer        // saved logger.Output()
-}
-
-func (t *SpinnerTracker) Start(message string, count int) {
-	// Make sure we save the logger output since we modify the logger.
-	if t.out == nil {
-		t.out = t.OutputLogger.Output()
-	}
-	// Allow calling Start without having first called Stop.
-	if t.s != nil {
-		t.s.Stop()
-	}
-
-	opts := []spinner.Option{spinner.WithWriter(t.out)}
-	if message != "" {
-		opts = append(opts, spinner.WithStartMessage(message))
-	}
-	if count > 1 {
-		opts = append(opts, spinner.WithCount(count))
-	}
-	if t.Interval > 0 {
-		opts = append(opts, spinner.WithInterval(t.Interval))
-	}
-	if t.MaxMessageLength > 0 {
-		opts = append(opts, spinner.WithMaxMessageLength(t.MaxMessageLength))
-	}
-	if t.PersistMessages {
-		opts = append(opts, spinner.WithPersistMessages(t.PersistMessages))
-	}
-
-	t.s = spinner.New(opts...)
-	t.OutputLogger.SetOutput(t.s)
-	t.s.Start()
-}
-
-func (t *SpinnerTracker) Stop() {
-	if t.s != nil {
-		t.s.Stop()
-		t.s = nil
-		t.OutputLogger.SetOutput(t.out)
-	}
-}
-
-func (t *SpinnerTracker) Inc() {
-	if t.s != nil {
-		t.s.Inc()
-	}
-}
-
-func (t *SpinnerTracker) UpdateMessage(m string) {
-	if t.s != nil {
-		t.s.UpdateMessage(m)
-	}
 }
 
 // LogWriter returns an io.Writer that can be used to write arbitrary text to the logger.

@@ -16,6 +16,11 @@ type RunOptions struct {
 	// Message is the message that will be passed to Tracker.Start.
 	// If omitted no message will be written by the Tracker.
 	Message string
+	// Count is the count passed to Tracker.Start to track the number of operations.
+	// Run will not automatically increment the progress count, instead it is
+	// up to the RunFunc to call Tracker.Inc.
+	// If omitted it will be 0, i.e. no count.
+	Count int
 	// Timeout sets a timeout after which the running function will be cancelled.
 	// Defaults to 10min if omitted.
 	Timeout time.Duration
@@ -40,7 +45,7 @@ func Run(ctx context.Context, opts RunOptions, fn RunFunc) error {
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
-	t.Start(opts.Message, 0)
+	t.Start(opts.Message, opts.Count)
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- fn(ctx)
