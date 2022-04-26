@@ -1,6 +1,7 @@
 package text_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -60,6 +61,24 @@ func TestExpandVariablesString(t *testing.T) {
 				t.Errorf("got %q, want %q", got, tt.out)
 			}
 		})
+	}
+}
+
+func TestVariableMapper(t *testing.T) {
+	vm := text.NewVariableMapper(map[string]string{
+		"HOME": "/home/foo",
+		"foo":  "bar",
+	})
+	in := "${HOME}; ${missing1}; ${foo}; ${missing2}; ${missing1}; ${nope}"
+	wantText := "/home/foo; ; bar; ; ; "
+	got := text.ExpandVariablesString(in, vm.Map)
+	if got != wantText {
+		t.Errorf("got text %q, want %q", got, wantText)
+	}
+
+	wantMissing := []string{"missing1", "missing2", "nope"}
+	if !reflect.DeepEqual(vm.Missing(), wantMissing) {
+		t.Errorf("got missing %+v, want %+v", vm.Missing(), wantMissing)
 	}
 }
 
