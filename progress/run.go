@@ -35,32 +35,47 @@ type RunFunc func(ctx context.Context) error
 //
 // opts can be used to customize the behaviour of Run. See each option for more details.
 func Run(ctx context.Context, opts RunOptions, fn RunFunc) error {
+	_, err := RunT(ctx, opts, func(ctx context.Context) (struct{}, error) {
+		err := fn(ctx)
+		return struct{}{}, err
+	})
+	return err
+}
+
+// RunFuncT is like RunFunc but allows returning a value.
+type RunFuncT[T any] func(ctx context.Context) (T, error)
+
+// RunT is like Run but returns a value.
+func RunT[T any](ctx context.Context, opts RunOptions, fn RunFuncT[T]) (T, error) {
 	if opts.Timeout == 0 {
 		// Always provide a timeout to make sure the program doesn't hang and run forever.
 		opts.Timeout = defaultTimeout
 	}
 
-	t := TrackerFromContext(ctx)
-	defer t.Stop()
+	tracker := TrackerFromContext(ctx)
+	defer tracker.Stop()
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
-	t.Start(opts.Message, opts.Count)
-	errCh := make(chan error, 1)
+	tracker.Start(opts.Message, 0)
+	resCh := make(chan result[T], 1)
 	go func() {
-		errCh <- fn(ctx)
+		t, err := fn(ctx)
+		resCh <- result[T]{t, err}
 	}()
 
+	var t T
 	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
+	case res := <-resCh:
+		if res.err != nil {
+			return res.t, res.err
 		}
+		t = res.t
 	// Handle the context being cancelled or the deadline being exceeded.
 	case <-ctx.Done():
-		return ctx.Err()
+		return t, ctx.Err()
 	}
-	return nil
+	return t, nil
 }
 
 // RunParallelOptions is used to customize how RunParallel behaves.
@@ -101,9 +116,22 @@ type RunParallelFunc func(ctx context.Context, i int) error
 //
 // opts can be used to customize the behaviour of RunParallel. See each option for more details.
 func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFunc) error {
+	_, err := RunParallelT(ctx, opts, func(ctx context.Context, i int) (struct{}, error) {
+		err := fn(ctx, i)
+		return struct{}{}, err
+	})
+	return err
+}
+
+// RunParallelFuncT is like RunParallelFunc but allows returning a value.
+type RunParallelFuncT[T any] func(ctx context.Context, i int) (T, error)
+
+// RunParallelT is like RunParallel but returns a slice containing all the return values
+// from each run fn.
+func RunParallelT[T any](ctx context.Context, opts RunParallelOptions, fn RunParallelFuncT[T]) ([]T, error) {
 	// No-op if count is zero since we have nothing to run.
 	if opts.Count < 1 {
-		return nil
+		return nil, nil
 	}
 	if opts.Timeout == 0 {
 		// Always provide a timeout to make sure the program doesn't hang and run forever.
@@ -113,13 +141,13 @@ func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFun
 		opts.Concurrency = DefaultConcurrency()
 	}
 
-	t := TrackerFromContext(ctx)
-	defer t.Stop()
+	tracker := TrackerFromContext(ctx)
+	defer tracker.Stop()
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
-	t.Start(opts.Message, opts.Count)
-	errCh := make(chan error, opts.Count)
+	tracker.Start(opts.Message, opts.Count)
+	resCh := make(chan result[T], opts.Count)
 	semCh := make(chan struct{}, opts.Concurrency)
 	for i := 0; i < opts.Count; i++ {
 		semCh <- struct{}{}
@@ -127,36 +155,46 @@ func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFun
 			defer func() {
 				<-semCh
 			}()
-			errCh <- fn(ctx, i)
-			t.Inc()
+			t, err := fn(ctx, i)
+			resCh <- result[T]{t, err}
+			tracker.Inc()
 		}(i)
 	}
 
+	var t []T
 	var errs errors.List
 	for i := 0; i < opts.Count; i++ {
 		select {
-		case err := <-errCh:
+		case res := <-resCh:
 			// No error occurred, continue
-			if err == nil {
+			if res.err == nil {
+				t = append(t, res.t)
 				continue
 			}
 			// Handle error based on how RunParallel was configured.
 			if opts.CancelOnError {
 				// Bail and cancel any runs that are in progress.
 				cancel()
-				return err
+				return nil, res.err
 			}
 			// Continue and keep track of the error.
-			errs = append(errs, err)
+			errs = append(errs, res.err)
 		// Handle the context being cancelled or the deadline being exceeded.
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		}
 	}
 	if len(errs) > 0 {
-		return errs
+		return nil, errs
 	}
-	return nil
+	return t, nil
+}
+
+// result is a small helper type to combine the return values from a RunFuncT or RunParallelFuncT
+// so it can be sent through a channel.
+type result[T any] struct {
+	t   T
+	err error
 }
 
 // DefaultConcurrency returns default concurrency that should be used for parallel operations

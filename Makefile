@@ -2,7 +2,7 @@
 
 # Get all dependencies
 setup:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.46.2
 .PHONY: setup
 
 # Clean all build artifacts
