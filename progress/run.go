@@ -57,7 +57,7 @@ func RunT[T any](ctx context.Context, opts RunOptions, fn RunFuncT[T]) (T, error
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
-	tracker.Start(opts.Message, 0)
+	tracker.Start(opts.Message, opts.Count)
 	resCh := make(chan result[T], 1)
 	go func() {
 		t, err := fn(ctx)
