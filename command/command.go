@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -78,8 +79,11 @@ func WithDir(dir string) Option {
 }
 
 // Exec executes the named program with the given arguments.
-func (c *Command) Exec(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+//
+// The provided context can be used to kill the process if the context
+// becomes done before the program completes on its own.
+func (c *Command) Exec(ctx context.Context, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
 	if c.stdin != nil {
 		cmd.Stdin = c.stdin
 	}
@@ -107,6 +111,6 @@ func (c *Command) Exec(name string, args ...string) error {
 
 // Exec executes the named program with the given arguments.
 // This is a shorthand for when the default command options wish to be used.
-func Exec(name string, args ...string) error {
-	return New().Exec(name, args...)
+func Exec(ctx context.Context, name string, args ...string) error {
+	return New().Exec(ctx, name, args...)
 }

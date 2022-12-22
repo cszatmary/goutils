@@ -99,6 +99,7 @@ func TestRunError(t *testing.T) {
 			runFn: func(ctx context.Context) error {
 				select {
 				case <-ctx.Done():
+					return ctx.Err()
 				case <-time.After(10 * time.Millisecond):
 				}
 				return nil
@@ -144,6 +145,7 @@ func TestRunTError(t *testing.T) {
 			runFn: func(ctx context.Context) (int, error) {
 				select {
 				case <-ctx.Done():
+					return 0, ctx.Err()
 				case <-time.After(10 * time.Millisecond):
 				}
 				return 10, nil
@@ -229,10 +231,10 @@ func TestRunParallelT(t *testing.T) {
 	if tracker.active {
 		t.Error("want tracker to be stopped, but isn't")
 	}
-	sort.Ints(vals)
 	if len(vals) != 3 {
 		t.Errorf("got %d values, want 3", len(vals))
 	}
+	// Returned values should be sorted based on run order
 	if vals[0] != 0 || vals[1] != 1 || vals[2] != 2 {
 		t.Errorf("got %v, want [0 1 2]", vals)
 	}
@@ -316,6 +318,7 @@ func TestRunParallelError(t *testing.T) {
 			runFn: func(ctx context.Context, i int) error {
 				select {
 				case <-ctx.Done():
+					return ctx.Err()
 				case <-time.After(10 * time.Millisecond):
 				}
 				return nil
@@ -363,6 +366,7 @@ func TestRunParallelTError(t *testing.T) {
 			runFn: func(ctx context.Context, i int) (int, error) {
 				select {
 				case <-ctx.Done():
+					return 0, ctx.Err()
 				case <-time.After(10 * time.Millisecond):
 				}
 				return 10, nil

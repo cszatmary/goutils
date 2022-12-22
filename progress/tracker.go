@@ -77,23 +77,45 @@ type Tracker interface {
 type trackerKey struct{}
 
 // ContextWithTracker returns a new context with t added to it.
+// The tracker can be retrieved later using TrackerFromContext.
 func ContextWithTracker(ctx context.Context, t Tracker) context.Context {
-	return context.WithValue(ctx, trackerKey{}, t)
+	return ContextWithTrackerUsingKey(ctx, t, nil)
 }
 
-// TrackerFromContext returns the Tracker from ctx. If no Tracker exists in ctx,
-// a no-op Tracker will be returned. Thus, the returned Tracker will never be nil,
-// and it is always safe to call methods on it.
+// ContextWithTrackerUsingKey is like ContextWithTracker but allows for using a custom key.
+// This can be useful if you want to avoid using the default key to prevent clashes.
+// The tracker can be retrieved later using TrackerFromContextUsingKey.
+func ContextWithTrackerUsingKey(ctx context.Context, t Tracker, key any) context.Context {
+	if key == nil {
+		key = trackerKey{}
+	}
+	return context.WithValue(ctx, key, t)
+}
+
+// TrackerFromContext returns the Tracker from ctx.
+//
+// If no Tracker exists in ctx, a no-op Tracker will be returned.
+// Thus, the returned Tracker will never be nil, and it is always safe to call methods on it.
 func TrackerFromContext(ctx context.Context) Tracker {
-	v := ctx.Value(trackerKey{})
+	return TrackerFromContextUsingKey(ctx, nil)
+}
+
+// TrackerFromContextUsingKey is like TrackerFromContext but allows for using a custom key.
+// It should be used if ContextWithTrackerUsingKey was used to create a context with a custom key.
+//
+// If a value exists in the context for the given key but is not a Tracker, the function will panic.
+func TrackerFromContextUsingKey(ctx context.Context, key any) Tracker {
+	if key == nil {
+		key = trackerKey{}
+	}
+	v := ctx.Value(key)
 	if v == nil {
 		return NoopTracker{}
 	}
 	t, ok := v.(Tracker)
 	if !ok {
-		// v must always be a Tracker since it can only be added with that key
-		// in this package, so if we get here we have a bug.
-		panic("impossible: progress.TrackerFromContext: value is not of type Tracker")
+		// If the value is not a Tracker this is an invariant violation and it should explode loudly.
+		panic("impossible: progress.TrackerFromContextUsingKey: value is not of type Tracker")
 	}
 	return t
 }

@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/TouchBistro/goutils/errors"
+	"github.com/TouchBistro/goutils/async"
 )
 
 const defaultTimeout = 10 * time.Minute
@@ -24,6 +24,10 @@ type RunOptions struct {
 	// Timeout sets a timeout after which the running function will be cancelled.
 	// Defaults to 10min if omitted.
 	Timeout time.Duration
+	// TrackerKey can be used to specify a custom context key for retrieving a Tracker.
+	// This should be used if ContextWithTrackerUsingKey was used.
+	// If omitted, the default key will be used.
+	TrackerKey any
 }
 
 // RunFunc is a function run by Run. ctx should be passed to any operations
@@ -31,7 +35,6 @@ type RunOptions struct {
 type RunFunc func(ctx context.Context) error
 
 // Run runs fn. If ctx contains a Tracker, it will be used to display progress.
-// fn will be run on a separate goroutine so that timeouts can be enforced.
 //
 // opts can be used to customize the behaviour of Run. See each option for more details.
 func Run(ctx context.Context, opts RunOptions, fn RunFunc) error {
@@ -52,30 +55,12 @@ func RunT[T any](ctx context.Context, opts RunOptions, fn RunFuncT[T]) (T, error
 		opts.Timeout = defaultTimeout
 	}
 
-	tracker := TrackerFromContext(ctx)
+	tracker := TrackerFromContextUsingKey(ctx, opts.TrackerKey)
+	tracker.Start(opts.Message, opts.Count)
 	defer tracker.Stop()
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
-
-	tracker.Start(opts.Message, opts.Count)
-	resCh := make(chan result[T], 1)
-	go func() {
-		t, err := fn(ctx)
-		resCh <- result[T]{t, err}
-	}()
-
-	var t T
-	select {
-	case res := <-resCh:
-		if res.err != nil {
-			return res.t, res.err
-		}
-		t = res.t
-	// Handle the context being cancelled or the deadline being exceeded.
-	case <-ctx.Done():
-		return t, ctx.Err()
-	}
-	return t, nil
+	return fn(ctx)
 }
 
 // RunParallelOptions is used to customize how RunParallel behaves.
@@ -91,9 +76,14 @@ type RunParallelOptions struct {
 	// Concurrency controls how many goroutines can run concurrently.
 	// Defaults to runtime.NumCPU if omitted.
 	Concurrency int
-	// CancelOnError determines how Run should behave if a function returns an error.
-	// If true, Run will immediately return an error and cancel all other running functions.
-	// If false, Run will let the other functions continue and will return an errors.List
+	// CancelOnError determines how RunParallel should behave if a function returns an error.
+	//
+	// If true, Run will cancel all other running functions when it receives an error and
+	// return that first error. Note that RunParallel will still wait for all running functions
+	// to complete. This way you can guarantee that when RunParallel returns all concurrent operations
+	// have stopped.
+	//
+	// If false, RunParallel will let the other functions continue and will return an errors.List
 	// containing any errors from each function.
 	//
 	// This option only applies if Count > 1.
@@ -101,6 +91,10 @@ type RunParallelOptions struct {
 	// Timeout sets a timeout after which any running functions will be cancelled.
 	// Defaults to 10min if omitted.
 	Timeout time.Duration
+	// TrackerKey can be used to specify a custom context key for retrieving a Tracker.
+	// This should be used if ContextWithTrackerUsingKey was used.
+	// If omitted, the default key will be used.
+	TrackerKey any
 }
 
 // RunParallelFunc is a function run by RunParallel. ctx should be passed to any operations
@@ -127,7 +121,7 @@ func RunParallel(ctx context.Context, opts RunParallelOptions, fn RunParallelFun
 type RunParallelFuncT[T any] func(ctx context.Context, i int) (T, error)
 
 // RunParallelT is like RunParallel but returns a slice containing all the return values
-// from each run fn.
+// from each run fn. The slice will be sorted based on the order the functions were called.
 func RunParallelT[T any](ctx context.Context, opts RunParallelOptions, fn RunParallelFuncT[T]) ([]T, error) {
 	// No-op if count is zero since we have nothing to run.
 	if opts.Count < 1 {
@@ -141,60 +135,24 @@ func RunParallelT[T any](ctx context.Context, opts RunParallelOptions, fn RunPar
 		opts.Concurrency = DefaultConcurrency()
 	}
 
-	tracker := TrackerFromContext(ctx)
-	defer tracker.Stop()
-	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
-	defer cancel()
-
+	tracker := TrackerFromContextUsingKey(ctx, opts.TrackerKey)
 	tracker.Start(opts.Message, opts.Count)
-	resCh := make(chan result[T], opts.Count)
-	semCh := make(chan struct{}, opts.Concurrency)
+	defer tracker.Stop()
+
+	var group async.Group[T]
+	group.SetLocking(false)
+	group.SetMaxGoroutines(opts.Concurrency)
+	group.SetCancelOnError(opts.CancelOnError)
+	group.SetTimeout(opts.Timeout)
 	for i := 0; i < opts.Count; i++ {
-		semCh <- struct{}{}
-		go func(i int) {
-			defer func() {
-				<-semCh
-			}()
-			t, err := fn(ctx, i)
-			resCh <- result[T]{t, err}
+		i := i // https://go.dev/doc/faq#closures_and_goroutines
+		group.Queue(func(ctx context.Context) (T, error) {
+			v, err := fn(ctx, i)
 			tracker.Inc()
-		}(i)
+			return v, err
+		})
 	}
-
-	var t []T
-	var errs errors.List
-	for i := 0; i < opts.Count; i++ {
-		select {
-		case res := <-resCh:
-			// No error occurred, continue
-			if res.err == nil {
-				t = append(t, res.t)
-				continue
-			}
-			// Handle error based on how RunParallel was configured.
-			if opts.CancelOnError {
-				// Bail and cancel any runs that are in progress.
-				cancel()
-				return nil, res.err
-			}
-			// Continue and keep track of the error.
-			errs = append(errs, res.err)
-		// Handle the context being cancelled or the deadline being exceeded.
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-	if len(errs) > 0 {
-		return nil, errs
-	}
-	return t, nil
-}
-
-// result is a small helper type to combine the return values from a RunFuncT or RunParallelFuncT
-// so it can be sent through a channel.
-type result[T any] struct {
-	t   T
-	err error
+	return group.Wait(ctx)
 }
 
 // DefaultConcurrency returns default concurrency that should be used for parallel operations

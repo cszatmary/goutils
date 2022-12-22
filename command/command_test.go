@@ -2,6 +2,7 @@ package command_test
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestExists(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	err := command.Exec("echo", "Hello world")
+	err := command.Exec(context.Background(), "echo", "Hello world")
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
@@ -52,7 +53,7 @@ func TestExecOpts(t *testing.T) {
 			"FOO": "BAR",
 		}),
 	)
-	err := cmd.Exec("sh", "-c", "echo $FOO")
+	err := cmd.Exec(context.Background(), "sh", "-c", "echo $FOO")
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
@@ -72,7 +73,7 @@ func TestExecWithDir(t *testing.T) {
 		command.WithStdout(buf),
 		command.WithDir(tmpdir),
 	)
-	err := cmd.Exec("pwd")
+	err := cmd.Exec(context.Background(), "pwd")
 	if err != nil {
 		t.Errorf("want nil error, got %v", err)
 	}
@@ -83,7 +84,7 @@ func TestExecWithDir(t *testing.T) {
 }
 
 func TestExecError(t *testing.T) {
-	err := command.Exec("notacmd", "Hello World")
+	err := command.Exec(context.Background(), "notacmd", "Hello World")
 	if err == nil {
 		t.Error("want non-nil error, got nil")
 	}
