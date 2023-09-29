@@ -67,7 +67,7 @@ type Kind interface {
 // It is recommended to have Op be of the form package.function
 // or package.type.method to make it easy to identify the operation.
 //
-//   const op = errors.Op("foo.Bar")
+//	const op = errors.Op("foo.Bar")
 type Op string
 
 // New creates a new error using kind, reason and op.
@@ -237,7 +237,7 @@ func (e List) Format(s fmt.State, verb rune) {
 // However, unlike with errors.New, String allows defining constant error values.
 // This can be useful for creating sentinel errors.
 //
-//   const EOF errors.String = "end of file"
+//	const EOF errors.String = "end of file"
 type String string
 
 func (e String) Error() string {
@@ -277,7 +277,7 @@ func Is(err, target error) bool {
 // repeatedly calling Unwrap.
 //
 // An error matches target if the error's concrete value is assignable to the value
-// pointed to by target, or if the error has a method As(interface{}) bool such that
+// pointed to by target, or if the error has a method As(any) bool such that
 // As(target) returns true. In the latter case, the As method is responsible for
 // setting target.
 //
@@ -286,6 +286,6 @@ func Is(err, target error) bool {
 //
 // As panics if target is not a non-nil pointer to either a type that implements
 // error, or to any interface type.
-func As(err error, target interface{}) bool {
+func As(err error, target any) bool {
 	return stderrors.As(err, target)
 }

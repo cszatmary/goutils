@@ -195,7 +195,7 @@ func (s *Spinner) IncWithMessage(m string) {
 // IncWithMessagef increments the progress of the spinner and updates
 // the spinner message to the format specifier. If the spinner has already
 // reached full progress, IncWithMessagef does nothing.
-func (s *Spinner) IncWithMessagef(format string, args ...interface{}) {
+func (s *Spinner) IncWithMessagef(format string, args ...any) {
 	s.IncWithMessage(fmt.Sprintf(format, args...))
 }
 

@@ -14,42 +14,31 @@
 package progress
 
 import (
-	"bufio"
 	"context"
-	"io"
-	"runtime"
 )
-
-// Fields is a collection of fields provided to Logger.WithFields.
-type Fields map[string]interface{}
 
 // Logger represents a structured logger that can log messages at different levels.
 //
 // A logger should support the log levels of debug, info, warn, and error.
 // These are implemented through the corresponding methods.
 //
-// The WithFields method is used to create structured logs. It must return
-// another Logger that will contain the given fields when a creating logs.
+// The WithAttrs method is used to create structured logs. It must return
+// another Logger that will contain the given attributes when a creating logs.
+// The arguments to WithAttrs are expected to be a set of key-pair values representing attributes.
+//
+//	logger.WithAttrs("id", id).Info(...)
 type Logger interface {
-	WithFields(fields Fields) Logger
+	WithAttrs(args ...any) Logger
 
-	Debugf(format string, args ...interface{})
-	Infof(format string, args ...interface{})
-	Warnf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
+	Debugf(format string, args ...any)
+	Infof(format string, args ...any)
+	Warnf(format string, args ...any)
+	Errorf(format string, args ...any)
 
-	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
-	Error(args ...interface{})
-}
-
-// OutputLogger is a Logger that allows accessing and updating the underlying
-// io.Writer that logs are written to.
-type OutputLogger interface {
-	Logger
-	Output() io.Writer
-	SetOutput(w io.Writer)
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
 // Spinner represents a type that can display the progress of an operation
@@ -57,10 +46,10 @@ type OutputLogger interface {
 //
 // The Inc and UpdateMessage methods must be safe to call across multiple goroutines.
 type Spinner interface {
-	Start(message string, count int)
+	Start(msg string, count int)
 	Stop()
 	Inc()
-	UpdateMessage(m string)
+	UpdateMessage(msg string)
 }
 
 // Tracker combines the Logger and Spinner interfaces.
@@ -123,61 +112,16 @@ func TrackerFromContextUsingKey(ctx context.Context, key any) Tracker {
 // NoopTracker is a Tracker that no-ops on every method.
 type NoopTracker struct{}
 
-func (t NoopTracker) WithFields(fields Fields) Logger         { return t }
-func (NoopTracker) Debugf(format string, args ...interface{}) {}
-func (NoopTracker) Infof(format string, args ...interface{})  {}
-func (NoopTracker) Warnf(format string, args ...interface{})  {}
-func (NoopTracker) Errorf(format string, args ...interface{}) {}
-func (NoopTracker) Debug(args ...interface{})                 {}
-func (NoopTracker) Info(args ...interface{})                  {}
-func (NoopTracker) Warn(args ...interface{})                  {}
-func (NoopTracker) Error(args ...interface{})                 {}
-func (NoopTracker) Start(message string, count int)           {}
-func (NoopTracker) Stop()                                     {}
-func (NoopTracker) Inc()                                      {}
-func (NoopTracker) UpdateMessage(m string)                    {}
-
-// PlainTracker is a tracker that does not display a spinner.
-// It is effectively a no-op Spinner that wraps a Logger.
-type PlainTracker struct {
-	Logger
-}
-
-func (t *PlainTracker) Start(message string, count int) {
-	l := t.Logger
-	if count > 1 {
-		l = l.WithFields(Fields{"count": count})
-	}
-	l.Info(message)
-}
-
-func (*PlainTracker) Stop() {}
-func (*PlainTracker) Inc()  {}
-
-func (t *PlainTracker) UpdateMessage(m string) {
-	t.Logger.Info(m)
-}
-
-// LogWriter returns an io.Writer that can be used to write arbitrary text to the logger.
-// logFn should be a logging method such as Logger.Info. logger is used to log an error
-// if one occurs.
-//
-// It is the caller's responsibility to close the returned io.WriteCloser in order
-// to free resources.
-func LogWriter(logger Logger, logFn func(args ...interface{})) io.WriteCloser {
-	pr, pw := io.Pipe()
-	go logText(logger, pr, logFn)
-	runtime.SetFinalizer(pw, (*io.PipeWriter).Close)
-	return pw
-}
-
-func logText(logger Logger, pr *io.PipeReader, logFn func(args ...interface{})) {
-	s := bufio.NewScanner(pr)
-	for s.Scan() {
-		logFn(s.Text())
-	}
-	if err := s.Err(); err != nil {
-		logger.Errorf("Error while reading from Writer: %v", err)
-	}
-	pr.Close()
-}
+func (t NoopTracker) WithAttrs(...any) Logger { return t }
+func (NoopTracker) Debugf(string, ...any)     {}
+func (NoopTracker) Infof(string, ...any)      {}
+func (NoopTracker) Warnf(string, ...any)      {}
+func (NoopTracker) Errorf(string, ...any)     {}
+func (NoopTracker) Debug(string, ...any)      {}
+func (NoopTracker) Info(string, ...any)       {}
+func (NoopTracker) Warn(string, ...any)       {}
+func (NoopTracker) Error(string, ...any)      {}
+func (NoopTracker) Start(string, int)         {}
+func (NoopTracker) Stop()                     {}
+func (NoopTracker) Inc()                      {}
+func (NoopTracker) UpdateMessage(string)      {}

@@ -2,29 +2,32 @@ package spinner_test
 
 import (
 	"bytes"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/log"
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/TouchBistro/goutils/logutil"
 	"github.com/TouchBistro/goutils/spinner"
 )
 
 func TestSpinnerTracker(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &spinner.Tracker{
-		OutputLogger: log.New(
-			log.WithOutput(&buf),
-			log.WithFormatter(&log.TextFormatter{DisableTimestamp: true}),
-			log.WithLevel(log.LevelDebug),
-		),
+	var b bytes.Buffer
+	tracker := spinner.NewTracker(spinner.TrackerOptions{
+		Writer:   &b,
 		Interval: 10 * time.Millisecond,
-	}
+		NewHandler: func(w io.Writer) slog.Handler {
+			return slog.NewTextHandler(w, &slog.HandlerOptions{
+				Level:       slog.LevelDebug,
+				ReplaceAttr: logutil.RemoveKeys(slog.TimeKey),
+			})
+		},
+	})
 	tracker.Info("hello world")
 	tracker.Start("doing stuff", 2)
 	time.Sleep(15 * time.Millisecond)
-	tracker.WithFields(progress.Fields{"id": "foo"}).Debug("processing...")
+	tracker.WithAttrs("id", "foo").Debug("processing...")
 	tracker.Inc()
 	tracker.UpdateMessage("cleaning up")
 	time.Sleep(15 * time.Millisecond)
@@ -32,7 +35,7 @@ func TestSpinnerTracker(t *testing.T) {
 
 	// wait a bit because the spinner still has to erase before stopping
 	time.Sleep(25 * time.Millisecond)
-	got := buf.String()
+	got := b.String()
 
 	// Should be at least 3 frames
 	wantFrames := "⠋⠙⠹"
@@ -41,14 +44,42 @@ func TestSpinnerTracker(t *testing.T) {
 	}
 
 	wantMsgs := []string{
-		"level=info message=\"hello world\"\n",
+		"level=INFO msg=\"hello world\"\n",
 		"doing stuff (0/2)",
-		"level=debug message=processing... id=foo\n",
+		"level=DEBUG msg=processing... id=foo\n",
 		"cleaning up (1/2)",
 	}
 	for _, wantMsg := range wantMsgs {
 		if !strings.Contains(got, wantMsg) {
 			t.Errorf("got %q, want to contain %q", got, wantMsg)
 		}
+	}
+}
+
+func TestTrackerDisableSpinner(t *testing.T) {
+	var b bytes.Buffer
+	tracker := spinner.NewTracker(spinner.TrackerOptions{
+		Writer: &b,
+		NewHandler: func(w io.Writer) slog.Handler {
+			return slog.NewTextHandler(w, &slog.HandlerOptions{
+				Level:       slog.LevelDebug,
+				ReplaceAttr: logutil.RemoveKeys(slog.TimeKey),
+			})
+		},
+		DisableSpinner: true,
+	})
+	tracker.Info("hello world")
+	tracker.Start("doing stuff", 4)
+	tracker.WithAttrs("id", "foo").Debug("processing...")
+	tracker.UpdateMessage("cleaning up")
+	tracker.Stop()
+
+	want := `level=INFO msg="hello world"
+level=INFO msg="doing stuff" count=4
+level=DEBUG msg=processing... id=foo
+level=INFO msg="cleaning up"
+`
+	if got := b.String(); got != want {
+		t.Errorf("\ngot logs\n\t%s\nwant\n\t%s", got, want)
 	}
 }

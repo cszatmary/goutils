@@ -3,24 +3,22 @@ package progress_test
 import (
 	"bytes"
 	"context"
-	"sort"
+	"io"
+	"log/slog"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/TouchBistro/goutils/errors"
-	"github.com/TouchBistro/goutils/log"
+	"github.com/TouchBistro/goutils/logutil"
 	"github.com/TouchBistro/goutils/progress"
 )
 
 const errOops errors.String = "oops"
 
 func TestRun(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	var b bytes.Buffer
+	tracker := newMockTracker(&b)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	err := progress.Run(ctx, progress.RunOptions{
 		Message: "performing operation",
@@ -39,20 +37,17 @@ func TestRun(t *testing.T) {
 	if tracker.active {
 		t.Error("want tracker to be stopped, but isn't")
 	}
-	gotLogs := buf.String()
-	wantLogs := "info performing operation\ndebug doing stuff\n"
-	if gotLogs != wantLogs {
-		t.Errorf("got logs\n\t%s\nwant\n\t%s", gotLogs, wantLogs)
+	want := `level=INFO msg="performing operation"
+level=DEBUG msg="doing stuff"
+`
+	if got := b.String(); got != want {
+		t.Errorf("got logs\n\t%s\nwant\n\t%s", got, want)
 	}
 }
 
 func TestRunT(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	var b bytes.Buffer
+	tracker := newMockTracker(&b)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	v, err := progress.RunT(ctx, progress.RunOptions{
 		Message: "performing operation",
@@ -74,10 +69,11 @@ func TestRunT(t *testing.T) {
 	if tracker.active {
 		t.Error("want tracker to be stopped, but isn't")
 	}
-	gotLogs := buf.String()
-	wantLogs := "info performing operation\ndebug doing stuff\n"
-	if gotLogs != wantLogs {
-		t.Errorf("got logs\n\t%s\nwant\n\t%s", gotLogs, wantLogs)
+	want := `level=INFO msg="performing operation"
+level=DEBUG msg="doing stuff"
+`
+	if got := b.String(); got != want {
+		t.Errorf("got logs\n\t%s\nwant\n\t%s", got, want)
 	}
 }
 
@@ -109,12 +105,7 @@ func TestRunError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			tracker := &mockSpinnerTracker{Logger: log.New(
-				log.WithOutput(&buf),
-				log.WithFormatter(formatter{}),
-				log.WithLevel(log.LevelDebug),
-			)}
+			tracker := newMockTracker(io.Discard)
 			ctx := progress.ContextWithTracker(context.Background(), tracker)
 			err := progress.Run(ctx, progress.RunOptions{
 				Message: "performing operation",
@@ -155,12 +146,7 @@ func TestRunTError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			tracker := &mockSpinnerTracker{Logger: log.New(
-				log.WithOutput(&buf),
-				log.WithFormatter(formatter{}),
-				log.WithLevel(log.LevelDebug),
-			)}
+			tracker := newMockTracker(io.Discard)
 			ctx := progress.ContextWithTracker(context.Background(), tracker)
 			_, err := progress.RunT(ctx, progress.RunOptions{
 				Message: "performing operation",
@@ -174,12 +160,7 @@ func TestRunTError(t *testing.T) {
 }
 
 func TestRunParallel(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	outCh := make(chan int, 3)
 	err := progress.RunParallel(ctx, progress.RunParallelOptions{
@@ -201,22 +182,17 @@ func TestRunParallel(t *testing.T) {
 	for i := range outCh {
 		vals = append(vals, i)
 	}
-	sort.Ints(vals)
 	if len(vals) != 3 {
 		t.Errorf("got %d values, want 3", len(vals))
 	}
-	if vals[0] != 0 || vals[1] != 1 || vals[2] != 2 {
-		t.Errorf("got %v, want [0 1 2]", vals)
+	slices.Sort(vals)
+	if want := []int{0, 1, 2}; !slices.Equal(vals, want) {
+		t.Errorf("got %v, want %v", vals, want)
 	}
 }
 
 func TestRunParallelT(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	vals, err := progress.RunParallelT(ctx, progress.RunParallelOptions{
 		Message: "performing operation",
@@ -235,18 +211,13 @@ func TestRunParallelT(t *testing.T) {
 		t.Errorf("got %d values, want 3", len(vals))
 	}
 	// Returned values should be sorted based on run order
-	if vals[0] != 0 || vals[1] != 1 || vals[2] != 2 {
-		t.Errorf("got %v, want [0 1 2]", vals)
+	if want := []int{0, 1, 2}; !slices.Equal(vals, want) {
+		t.Errorf("got %v, want %v", vals, want)
 	}
 }
 
 func TestRunParallelNoCount(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	wasRan := false
 	err := progress.RunParallel(ctx, progress.RunParallelOptions{
@@ -269,12 +240,7 @@ func TestRunParallelNoCount(t *testing.T) {
 }
 
 func TestRunParallelTNoCount(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	wasRan := false
 	vals, err := progress.RunParallelT(ctx, progress.RunParallelOptions{
@@ -328,12 +294,7 @@ func TestRunParallelError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			tracker := &mockSpinnerTracker{Logger: log.New(
-				log.WithOutput(&buf),
-				log.WithFormatter(formatter{}),
-				log.WithLevel(log.LevelDebug),
-			)}
+			tracker := newMockTracker(io.Discard)
 			ctx := progress.ContextWithTracker(context.Background(), tracker)
 			err := progress.RunParallel(ctx, progress.RunParallelOptions{
 				Message:       "performing operation",
@@ -376,12 +337,7 @@ func TestRunParallelTError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			tracker := &mockSpinnerTracker{Logger: log.New(
-				log.WithOutput(&buf),
-				log.WithFormatter(formatter{}),
-				log.WithLevel(log.LevelDebug),
-			)}
+			tracker := newMockTracker(io.Discard)
 			ctx := progress.ContextWithTracker(context.Background(), tracker)
 			_, err := progress.RunParallelT(ctx, progress.RunParallelOptions{
 				Message:       "performing operation",
@@ -397,12 +353,7 @@ func TestRunParallelTError(t *testing.T) {
 }
 
 func TestRunParallelMultipleErrors(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	err := progress.RunParallel(ctx, progress.RunParallelOptions{
 		Message: "performing operation",
@@ -420,12 +371,7 @@ func TestRunParallelMultipleErrors(t *testing.T) {
 }
 
 func TestRunParallelTMultipleErrors(t *testing.T) {
-	var buf bytes.Buffer
-	tracker := &mockSpinnerTracker{Logger: log.New(
-		log.WithOutput(&buf),
-		log.WithFormatter(formatter{}),
-		log.WithLevel(log.LevelDebug),
-	)}
+	tracker := newMockTracker(io.Discard)
 	ctx := progress.ContextWithTracker(context.Background(), tracker)
 	_, err := progress.RunParallelT(ctx, progress.RunParallelOptions{
 		Message: "performing operation",
@@ -443,11 +389,19 @@ func TestRunParallelTMultipleErrors(t *testing.T) {
 }
 
 type mockSpinnerTracker struct {
-	*log.Logger
+	*logutil.FormatLogger
 
 	count  int
 	i      int
 	active bool
+}
+
+func newMockTracker(w io.Writer) *mockSpinnerTracker {
+	l := logutil.NewFormatLogger(slog.NewTextHandler(w, &slog.HandlerOptions{
+		Level:       slog.LevelDebug,
+		ReplaceAttr: logutil.RemoveKeys(slog.TimeKey),
+	}))
+	return &mockSpinnerTracker{FormatLogger: l}
 }
 
 func (t *mockSpinnerTracker) Start(message string, count int) {

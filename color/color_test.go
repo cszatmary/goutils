@@ -101,6 +101,19 @@ func TestColorDisabled(t *testing.T) {
 	}
 }
 
+func TestColorerDisabled(t *testing.T) {
+	color.SetEnabled(true)
+	var c color.Colorer
+	c.SetEnabled(false)
+	if got, want := c.Red("foo bar"), "foo bar"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	// Make sure package functions were not affected
+	if got, want := color.Red("foo bar"), "\x1b[31mfoo bar\x1b[39m"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func BenchmarkRed(b *testing.B) {
 	color.SetEnabled(true)
 	b.Run("no strip", func(b *testing.B) {
