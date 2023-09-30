@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/spinner"
+	"github.com/cszatmary/goutils/spinner"
 )
 
 type syncBuffer struct {

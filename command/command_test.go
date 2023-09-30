@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TouchBistro/goutils/command"
+	"github.com/cszatmary/goutils/command"
 )
 
 func TestExists(t *testing.T) {

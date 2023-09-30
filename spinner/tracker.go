@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/TouchBistro/goutils/logutil"
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/cszatmary/goutils/logutil"
+	"github.com/cszatmary/goutils/progress"
 )
 
 // tracker is a progress.Tracker that uses a Spinner to display progress.

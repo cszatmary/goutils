@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TouchBistro/goutils/logutil"
+	"github.com/cszatmary/goutils/logutil"
 )
 
 // These tests are adapted from src/log/slog/handler_test.go in order

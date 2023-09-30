@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/logutil"
-	"github.com/TouchBistro/goutils/spinner"
+	"github.com/cszatmary/goutils/logutil"
+	"github.com/cszatmary/goutils/spinner"
 )
 
 func TestSpinnerTracker(t *testing.T) {

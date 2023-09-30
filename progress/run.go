@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/TouchBistro/goutils/async"
+	"github.com/cszatmary/goutils/async"
 )
 
 const defaultTimeout = 10 * time.Minute

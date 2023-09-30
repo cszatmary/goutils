@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/TouchBistro/goutils/errors"
+	"github.com/cszatmary/goutils/errors"
 )
 
 // MultiHandler is a Handler that writes Records to multiple Handlers.

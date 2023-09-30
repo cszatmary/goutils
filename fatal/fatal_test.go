@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/TouchBistro/goutils/errors"
-	"github.com/TouchBistro/goutils/fatal"
+	"github.com/cszatmary/goutils/errors"
+	"github.com/cszatmary/goutils/fatal"
 )
 
 func TestExiterExit(t *testing.T) {

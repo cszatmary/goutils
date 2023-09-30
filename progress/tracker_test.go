@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/cszatmary/goutils/progress"
 )
 
 func TestTrackerFromContext(t *testing.T) {

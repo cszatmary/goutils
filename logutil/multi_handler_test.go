@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/logutil"
+	"github.com/cszatmary/goutils/logutil"
 )
 
 var testTime = time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC)

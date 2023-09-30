@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/TouchBistro/goutils/errors"
+	"github.com/cszatmary/goutils/errors"
 )
 
 type errkind uint8

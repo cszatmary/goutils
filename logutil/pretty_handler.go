@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TouchBistro/goutils/color"
+	"github.com/cszatmary/goutils/color"
 )
 
 // PrettyHandler is a Handler that writes Records to an io.Writer in a pretty format that looks like so:

@@ -16,7 +16,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/cszatmary/goutils/progress"
 )
 
 // WriterVar is a io.Writer variable, to allow a Handler writer to change dynamically.

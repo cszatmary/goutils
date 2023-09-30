@@ -3,7 +3,7 @@ package color_test
 import (
 	"testing"
 
-	"github.com/TouchBistro/goutils/color"
+	"github.com/cszatmary/goutils/color"
 )
 
 func TestColors(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/logutil"
+	"github.com/cszatmary/goutils/logutil"
 )
 
 func TestWriterVar(t *testing.T) {

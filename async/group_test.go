@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/async"
-	"github.com/TouchBistro/goutils/errors"
+	"github.com/cszatmary/goutils/async"
+	"github.com/cszatmary/goutils/errors"
 )
 
 // Parallel illustrates the use of a Group for synchronizing a simple parallel operation.

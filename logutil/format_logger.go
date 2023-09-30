@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/cszatmary/goutils/progress"
 )
 
 // FormatLogger wraps a slog.Logger and gives it Printf-like functions for each log level.

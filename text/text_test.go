@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TouchBistro/goutils/text"
+	"github.com/cszatmary/goutils/text"
 )
 
 var expandVariablesTests = []struct {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TouchBistro/goutils/logutil"
+	"github.com/cszatmary/goutils/logutil"
 )
 
 func TestFormatLogger(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TouchBistro/goutils/errors"
+	"github.com/cszatmary/goutils/errors"
 )
 
 // Group is used to manage a group of goroutines that are concurrently running sub-operations

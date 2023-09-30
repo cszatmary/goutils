@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TouchBistro/goutils/errors"
-	"github.com/TouchBistro/goutils/logutil"
-	"github.com/TouchBistro/goutils/progress"
+	"github.com/cszatmary/goutils/errors"
+	"github.com/cszatmary/goutils/logutil"
+	"github.com/cszatmary/goutils/progress"
 )
 
 const errOops errors.String = "oops"
